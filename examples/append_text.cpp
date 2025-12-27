@@ -1,3 +1,4 @@
+#include <exception>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -10,27 +11,22 @@ using namespace rix::io;
 
 static int run_example()
 {
-    const auto path = temp_path("rix_io_example");
+    const auto path = temp_path("rix_io_append");
 
-    std::cout << "[rix-io] Example file: " << path << "\n";
+    std::cout << "[rix-io] File: " << path << "\n";
 
-    const std::string content =
-        "Rix IO example\n"
-        "--------------\n"
-        "This file was created by rix::io.\n";
-
-    write_file_text(path, content);
+    write_file_text(path, "Line A\n", WriteMode::append);
+    write_file_text(path, "Line B\n", WriteMode::append);
+    write_file_text(path, "Line C\n", WriteMode::append);
 
     const auto loaded = read_file_text(path);
 
-    std::cout << "[rix-io] Loaded content:\n";
-    std::cout << "------------------------\n";
-    std::cout << loaded << "\n";
+    std::cout << "[rix-io] Loaded:\n";
+    std::cout << "----------------\n";
+    std::cout << loaded;
 
-    // cleanup best-effort
     std::error_code ec;
     std::filesystem::remove(path, ec);
-
     return 0;
 }
 
