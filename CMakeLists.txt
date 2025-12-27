@@ -32,17 +32,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Friendly warnings (can be tuned later if needed)
 set(RIX_IO_GLOBAL_CXX_FLAGS "-Wall -Wextra -Wshadow")
 set(CMAKE_CXX_FLAGS_RELEASE "${RIX_IO_GLOBAL_CXX_FLAGS} -O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG   "${RIX_IO_GLOBAL_CXX_FLAGS} -g")
 
 # ------------------------ Sources discovery --------------------------
-# If any .cpp exists under src/, we switch to STATIC build mode.
 file(GLOB_RECURSE RIX_IO_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 # ------------------------ Helper: Sanitizers (optional) --------------
-# This is opt-in and controlled by a top-level option if needed.
 option(RIX_IO_ENABLE_SANITIZERS "Enable address/UB sanitizers for rix-io" OFF)
 
 function(rix_io_apply_sanitizers tgt scope)
@@ -127,13 +124,7 @@ if (RIX_IO_BUILD_TESTS)
   add_executable(rix_io_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/file_test.cpp
   )
-
   target_link_libraries(rix_io_tests PRIVATE rix_io)
-
-  # Include dirs arrivent via rix_io (PUBLIC / INTERFACE), donc pas besoin
-  # d'en rajouter ici.
-
-  # Optionnel : activer les sanitizers aussi pour les tests
   rix_io_apply_sanitizers(rix_io_tests PRIVATE)
 
   add_test(NAME rix_io_file_test COMMAND rix_io_tests)
@@ -141,16 +132,28 @@ endif()
 
 # ---------------------------- Examples -------------------------------
 if (RIX_IO_BUILD_EXAMPLES)
-  add_executable(rix_io_read_write
-    ${CMAKE_CURRENT_SOURCE_DIR}/examples/read_write.cpp
+  function(rix_io_add_example exe_name src_file)
+    add_executable(${exe_name} ${src_file})
+    target_link_libraries(${exe_name} PRIVATE rix_io)
+    rix_io_apply_sanitizers(${exe_name} PRIVATE)
+  endfunction()
+
+  set(RIX_IO_EXAMPLES
+    read_write
+    binary_read_write
+    buffer_text_roundtrip
+    append_text
+    try_read_missing
+    util_exists_and_size
+    file_copy
   )
 
-  target_link_libraries(rix_io_read_write PRIVATE rix_io)
-
-  # Optionnel : sanitizers sur l'exemple aussi
-  rix_io_apply_sanitizers(rix_io_read_write PRIVATE)
+  foreach(ex ${RIX_IO_EXAMPLES})
+    rix_io_add_example(rix_io_${ex}
+      ${CMAKE_CURRENT_SOURCE_DIR}/examples/${ex}.cpp
+    )
+  endforeach()
 endif()
-
 
 # ------------------------ Headers install ----------------------------
 install(DIRECTORY include/
