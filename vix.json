@@ -1,0 +1,24 @@
+{
+  "name": "rix_io",
+  "namespace": "rix",
+  "version": "0.1.0",
+  "type": "header-only",
+  "include": "include",
+  "license": "MIT",
+  "description": "Modern lightweight I/O utilities for C++.",
+  "keywords": [
+    "cpp",
+    "io",
+    "streams",
+    "file",
+    "console",
+    "rix"
+  ],
+  "repository": "https://github.com/rixcpp/rix",
+  "authors": [
+    {
+      "name": "Gaspard Kirira",
+      "github": "Gaspardkirira"
+    }
+  ]
+}

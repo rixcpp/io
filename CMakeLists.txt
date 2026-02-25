@@ -27,49 +27,54 @@ project(rix_io VERSION 0.1.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
-# ------------------------ Global settings ----------------------------
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(RIX_IO_GLOBAL_CXX_FLAGS "-Wall -Wextra -Wshadow")
-set(CMAKE_CXX_FLAGS_RELEASE "${RIX_IO_GLOBAL_CXX_FLAGS} -O2 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG   "${RIX_IO_GLOBAL_CXX_FLAGS} -g")
+file(GLOB_RECURSE RIX_IO_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+)
 
-# ------------------------ Sources discovery --------------------------
-file(GLOB_RECURSE RIX_IO_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-
-# ------------------------ Helper: Sanitizers (optional) --------------
 option(RIX_IO_ENABLE_SANITIZERS "Enable address/UB sanitizers for io" OFF)
+option(RIX_IO_BUILD_TESTS "Build io tests" ON)
+option(RIX_IO_BUILD_EXAMPLES "Build io examples" ON)
 
-function(rix_io_apply_sanitizers tgt scope)
-  if (RIX_IO_ENABLE_SANITIZERS AND TARGET ${tgt})
-    message(STATUS "[io] enabling sanitizers on ${tgt} (${scope})")
+function(rix_io_apply_warnings tgt scope)
+  if (NOT TARGET ${tgt})
+    return()
+  endif()
 
-    if (${scope} STREQUAL "PRIVATE")
-      target_compile_options(${tgt} PRIVATE
-        -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined
-      )
-      target_link_options(${tgt} PRIVATE
-        -fsanitize=address,undefined
-      )
-    else()
-      target_compile_options(${tgt} INTERFACE
-        -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined
-      )
-      target_link_options(${tgt} INTERFACE
-        -fsanitize=address,undefined
-      )
-    endif()
+  if (MSVC)
+    target_compile_options(${tgt} ${scope} /W4 /permissive-)
+  else()
+    target_compile_options(${tgt} ${scope} -Wall -Wextra -Wshadow -Wpedantic)
   endif()
 endfunction()
 
-# ============================== STATIC ===============================
+function(rix_io_apply_sanitizers tgt scope)
+  if (NOT RIX_IO_ENABLE_SANITIZERS OR NOT TARGET ${tgt})
+    return()
+  endif()
+
+  if (MSVC)
+    message(WARNING "[io] Sanitizers are not enabled on MSVC in this module.")
+    return()
+  endif()
+
+  target_compile_options(${tgt} ${scope}
+    -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined
+  )
+  target_link_options(${tgt} ${scope}
+    -fsanitize=address,undefined
+  )
+endfunction()
+
 if (RIX_IO_SOURCES)
-  message(STATUS "[io] Building STATIC library with detected sources.")
+  message(STATUS "[io] Building STATIC library (sources found).")
 
   add_library(rix_io STATIC ${RIX_IO_SOURCES})
   add_library(rix::io ALIAS rix_io)
+
   target_compile_features(rix_io PUBLIC cxx_std_20)
 
   target_include_directories(rix_io
@@ -78,7 +83,7 @@ if (RIX_IO_SOURCES)
       $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 
-  # Sanitizers (opt-in)
+  rix_io_apply_warnings(rix_io PUBLIC)
   rix_io_apply_sanitizers(rix_io PRIVATE)
 
   set_target_properties(rix_io PROPERTIES
@@ -95,13 +100,12 @@ if (RIX_IO_SOURCES)
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   )
-
-# ============================ HEADER-ONLY ============================
 else()
   message(STATUS "[io] Building HEADER-ONLY library (no sources).")
 
   add_library(rix_io INTERFACE)
   add_library(rix::io ALIAS rix_io)
+
   target_compile_features(rix_io INTERFACE cxx_std_20)
 
   target_include_directories(rix_io INTERFACE
@@ -109,7 +113,7 @@ else()
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 
-  # Propagate sanitizers to dependents if requested
+  rix_io_apply_warnings(rix_io INTERFACE)
   rix_io_apply_sanitizers(rix_io INTERFACE)
 
   install(TARGETS rix_io
@@ -118,28 +122,31 @@ else()
   )
 endif()
 
-# ------------------------ Options local build ------------------------
-option(RIX_IO_BUILD_TESTS "Build io tests" ON)
-option(RIX_IO_BUILD_EXAMPLES "Build io examples" ON)
+install(
+  DIRECTORY include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
+)
 
-# ----------------------------- Tests --------------------------------
 if (RIX_IO_BUILD_TESTS)
   enable_testing()
 
   add_executable(rix_io_tests
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests/file_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_basic.cpp
   )
   target_link_libraries(rix_io_tests PRIVATE rix_io)
+
+  rix_io_apply_warnings(rix_io_tests PRIVATE)
   rix_io_apply_sanitizers(rix_io_tests PRIVATE)
 
-  add_test(NAME rix_io_file_test COMMAND rix_io_tests)
+  add_test(NAME rix_io_tests COMMAND rix_io_tests)
 endif()
 
-# ---------------------------- Examples -------------------------------
 if (RIX_IO_BUILD_EXAMPLES)
   function(rix_io_add_example exe_name src_file)
     add_executable(${exe_name} ${src_file})
     target_link_libraries(${exe_name} PRIVATE rix_io)
+    rix_io_apply_warnings(${exe_name} PRIVATE)
     rix_io_apply_sanitizers(${exe_name} PRIVATE)
   endfunction()
 
@@ -160,14 +167,6 @@ if (RIX_IO_BUILD_EXAMPLES)
   endforeach()
 endif()
 
-# ------------------------ Headers install ----------------------------
-install(
-  DIRECTORY include/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
-)
-
-# ----------------------------- Summary -------------------------------
 message(STATUS "------------------------------------------------------")
 message(STATUS "rix::io configured (${PROJECT_VERSION})")
 if (RIX_IO_SOURCES)
@@ -175,7 +174,7 @@ if (RIX_IO_SOURCES)
 else()
   message(STATUS "Mode: HEADER-ONLY / no sources")
 endif()
-message(STATUS "Include dir: ${CMAKE_CURRENT_SOURCE_DIR}/include (for <rix/...>)")
 message(STATUS "Sanitizers enabled: ${RIX_IO_ENABLE_SANITIZERS}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "Binary dir: ${CMAKE_BINARY_DIR}")
 message(STATUS "------------------------------------------------------")

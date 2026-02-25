@@ -42,3 +42,5 @@
 build/
 .vix-scripts/
 cmd.md
+build-*/
+build-ninja/
