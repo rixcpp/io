@@ -1,8 +1,8 @@
 # ====================================================================
-# Rix — IO Module
+# Rix - IO Module
 # ====================================================================
 # Purpose:
-#   Build configuration for the rix-io module.
+#   Build configuration for the io module.
 #
 #   This module provides basic I/O utilities for Rix:
 #     - simple file abstraction
@@ -40,28 +40,33 @@ set(CMAKE_CXX_FLAGS_DEBUG   "${RIX_IO_GLOBAL_CXX_FLAGS} -g")
 file(GLOB_RECURSE RIX_IO_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 # ------------------------ Helper: Sanitizers (optional) --------------
-option(RIX_IO_ENABLE_SANITIZERS "Enable address/UB sanitizers for rix-io" OFF)
+option(RIX_IO_ENABLE_SANITIZERS "Enable address/UB sanitizers for io" OFF)
 
 function(rix_io_apply_sanitizers tgt scope)
   if (RIX_IO_ENABLE_SANITIZERS AND TARGET ${tgt})
-    message(STATUS "[rix-io] enabling sanitizers on ${tgt} (${scope})")
+    message(STATUS "[io] enabling sanitizers on ${tgt} (${scope})")
+
     if (${scope} STREQUAL "PRIVATE")
       target_compile_options(${tgt} PRIVATE
-        -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined)
+        -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined
+      )
       target_link_options(${tgt} PRIVATE
-        -fsanitize=address,undefined)
+        -fsanitize=address,undefined
+      )
     else()
       target_compile_options(${tgt} INTERFACE
-        -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined)
+        -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined
+      )
       target_link_options(${tgt} INTERFACE
-        -fsanitize=address,undefined)
+        -fsanitize=address,undefined
+      )
     endif()
   endif()
 endfunction()
 
 # ============================== STATIC ===============================
 if (RIX_IO_SOURCES)
-  message(STATUS "[rix-io] Building STATIC library with detected sources.")
+  message(STATUS "[io] Building STATIC library with detected sources.")
 
   add_library(rix_io STATIC ${RIX_IO_SOURCES})
   add_library(rix::io ALIAS rix_io)
@@ -93,7 +98,7 @@ if (RIX_IO_SOURCES)
 
 # ============================ HEADER-ONLY ============================
 else()
-  message(STATUS "[rix-io] Building HEADER-ONLY library (no sources).")
+  message(STATUS "[io] Building HEADER-ONLY library (no sources).")
 
   add_library(rix_io INTERFACE)
   add_library(rix::io ALIAS rix_io)
@@ -114,8 +119,8 @@ else()
 endif()
 
 # ------------------------ Options local build ------------------------
-option(RIX_IO_BUILD_TESTS "Build rix-io tests" ON)
-option(RIX_IO_BUILD_EXAMPLES "Build rix-io examples" ON)
+option(RIX_IO_BUILD_TESTS "Build io tests" ON)
+option(RIX_IO_BUILD_EXAMPLES "Build io examples" ON)
 
 # ----------------------------- Tests --------------------------------
 if (RIX_IO_BUILD_TESTS)
@@ -156,9 +161,11 @@ if (RIX_IO_BUILD_EXAMPLES)
 endif()
 
 # ------------------------ Headers install ----------------------------
-install(DIRECTORY include/
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+install(
+  DIRECTORY include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
+)
 
 # ----------------------------- Summary -------------------------------
 message(STATUS "------------------------------------------------------")
